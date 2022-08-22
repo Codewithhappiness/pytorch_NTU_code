@@ -1,5 +1,6 @@
 # Numerical Operations
 import csv
+import datetime
 import math
 import os
 
@@ -111,7 +112,9 @@ def trainer(train_loader, valid_loader, model, config, device):
     # Define your optimization algorithm.
     # TODO: Please check https://pytorch.org/docs/stable/optim.html to get more available algorithms.
     # TODO: L2 regularization (optimizer(weight decay...) or implement by your self).
-    optimizer = torch.optim.SGD(model.parameters(), lr=config['learning_rate'], momentum=0.9)
+    optimizer = torch.optim.SGD(model.parameters(), lr=config['learning_rate'], momentum=0.9,
+                                weight_decay=config['learning_rate'] / 100)
+    # optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
 
     writer = SummaryWriter()  # Writer of tensoboard.
 
@@ -168,7 +171,8 @@ def trainer(train_loader, valid_loader, model, config, device):
 
         if early_stop_count >= config['early_stop']:
             print('\nModel is not improving, so we halt the training session.')
-            return
+            return best_loss
+    return best_loss
 
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -176,8 +180,8 @@ config = {
     'seed': 5201314,  # Your seed number, you can pick your lucky number. :)
     'select_all': True,  # Whether to use all features.
     'valid_ratio': 0.2,  # validation_size = train_size * valid_ratio
-    'n_epochs': 3000,  # Number of epochs.
-    'batch_size': 256,
+    'n_epochs': 10000,  # Number of epochs.
+    'batch_size': 32,
     'learning_rate': 1e-5,
     'early_stop': 400,  # If model has not improved for this many consecutive epochs, stop training.
     'save_path': './models/model.ckpt'  # Your model will be saved here.
@@ -211,8 +215,12 @@ train_loader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffl
 valid_loader = DataLoader(valid_dataset, batch_size=config['batch_size'], shuffle=True, pin_memory=True)
 test_loader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=False, pin_memory=True)
 
+start_time = datetime.datetime.now()
 model = My_Model(input_dim=x_train.shape[1]).to(device)  # put your model and data on the same computation device.
-trainer(train_loader, valid_loader, model, config, device)
+best_loss = trainer(train_loader, valid_loader, model, config, device)
+end_time = datetime.datetime.now()
+print("time consumed {}".format(end_time - start_time))
+print("min model loss is {}".format(best_loss))
 
 
 def save_pred(preds, file):
